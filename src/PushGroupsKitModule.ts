@@ -1,7 +1,15 @@
-import { NativeModule, requireNativeModule } from 'expo';
+import {
+  NativeModule,
+  requireNativeModule
+} from 'expo';
 
 declare class PushGroupsKitModule extends NativeModule<{}> {
-  setValueAsync(value: string): Promise<void>;
+  showGroupedNotificationAsync(
+    notificationId: string,
+    groupId: string,
+    title: string,
+    body: string
+  ): Promise<void>;
 }
 
 export default requireNativeModule<PushGroupsKitModule>('PushGroupsKit');
