@@ -1,0 +1,10 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "push-groups-kit": ["../src/index"],
+      "push-groups-kit/*": ["../src/*"]
+    }
+  }
+}
