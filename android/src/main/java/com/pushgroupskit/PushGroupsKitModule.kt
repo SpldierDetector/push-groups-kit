@@ -1,4 +1,8 @@
+
 package com.pushgroupskit
+
+import android.os.Handler
+import android.os.Looper
 
 import android.Manifest
 import android.app.Notification
@@ -18,19 +22,14 @@ class PushGroupsKitModule : Module() {
   }
 
   @Suppress("DEPRECATION")
-  private fun createBuilder(
-    context: Context
-  ): Notification.Builder {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      Notification.BUilder(contex, CHANNEL_ID)
+  private fun createBuilder(context: Context): Notification.Builder =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      Notification.Builder(context, CHANNEL_ID)
     } else {
-      Notification.Builder(contex)
+      Notification.Builder(context)
     }
-  }
 
-  private fu createChannel(
-    manager: NotificationManager
-  ) {
+  private fun createChannel(manager: NotificationManager) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       val channel = NotificationChannel(
         CHANNEL_ID,
@@ -44,6 +43,59 @@ class PushGroupsKitModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("PushGroupsKit")
+
+    AsyncFunction("getNotificationDiagnosticsAsync") {
+      val context = appContext.reactContext
+        ?: error("Android context is unavailable")
+
+      val manager = context.getSystemService(
+        Context.NOTIFICATION_SERVICE
+      ) as NotificationManager
+
+      val channel = if (
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+      ) {
+        manager.getNotificationChannel(CHANNEL_ID)
+      } else {
+        null
+      }
+
+      mapOf(
+        "channelId" to CHANNEL_ID,
+        "notificationsEnabled" to manager.areNotificationsEnabled(),
+        "importance" to channel?.importance,
+        "vibrationEnabled" to channel?.shouldVibrate(),
+        "sound" to channel?.sound?.toString()
+      )
+    }
+
+    AsyncFunction("showUngroupedDiagnosticAsync") {
+      val context = appContext.reactContext
+        ?: error("Android context is unavailable")
+
+      val manager = context.getSystemService(
+        Context.NOTIFICATION_SERVICE
+      ) as NotificationManager
+
+      createChannel(manager)
+
+      val notification = createBuilder(context)
+        .setSmallIcon(android.R.drawable.ic_dialog_info)
+        .setContentTitle("Diagnostic notification")
+        .setContentText("Testing vibration without grouping")
+        .setAutoCancel(true)
+        .build()
+
+      Handler(Looper.getMainLooper()).postDelayed({
+        manager.notify(
+          "$TAG_PREFIX:diagnostic:${System.currentTimeMillis()}",
+          0,
+          notification
+        )
+      }, 5000L)
+
+      Unit
+    }
 
     AsyncFunction("showGroupedNotificationAsync") {
       notificationId: String,

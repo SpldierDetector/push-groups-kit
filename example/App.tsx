@@ -62,6 +62,24 @@ export default function App() {
     }
   }
 
+  async function runDiagnostics() {
+    try {
+      const result = await PushGroupsKit.getNotificationDiagnosticsAsync();
+      setStatus(JSON.stringify(result, null, 2));
+    } catch (error) {
+      setStatus(String(error));
+    }
+  }
+
+  async function testUngroupedNotification() {
+    try {
+      await PushGroupsKit.showUngroupedDiagnosticAsync();
+      setStatus('Notification scheduled. Press Home now.');
+    } catch (error) {
+      setStatus(String(error));
+    }
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Push Groups Kit</Text>
@@ -85,6 +103,24 @@ export default function App() {
       >
         <Text style={styles.buttonText}>
           Send to Chat 2
+        </Text>
+      </Pressable>
+
+      <Pressable
+        style={styles.button}
+        onPress={runDiagnostics}
+      >
+        <Text style={styles.buttonText}>
+          Check Notification Channel
+        </Text>
+      </Pressable>
+
+      <Pressable
+        style={styles.button}
+        onPress={testUngroupedNotification}
+      >
+        <Text style={styles.buttonText}>
+          Test Without Grouping
         </Text>
       </Pressable>
 
