@@ -17,7 +17,7 @@ import expo.modules.kotlin.modules.ModuleDefinition
 class PushGroupsKitModule : Module() {
 
   companion object {
-    private const val CHANNEL_ID = "push_groups_kit"
+    private const val CHANNEL_ID = "push_groups_kit_alerts_v3"
     private const val TAG_PREFIX = "push-groups-kit"
   }
 
@@ -35,7 +35,10 @@ class PushGroupsKitModule : Module() {
         CHANNEL_ID,
         "Grouped notifications",
         NotificationManager.IMPORTANCE_DEFAULT
-      )
+      ).apply {
+        enableVibration(true)
+        setVibrationPattern(longArrayOf(0L, 200L, 120L, 200L))
+      }
 
       manager.createNotificationChannel(channel)
     }
