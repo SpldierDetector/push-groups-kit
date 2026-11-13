@@ -11,6 +11,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.service.notification.StatusBarNotification
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
@@ -41,6 +42,27 @@ class PushGroupsKitModule : Module() {
       }
 
       manager.createNotificationChannel(channel)
+    }
+  }
+
+  private fun getNotificationManager(): NotificationManager {
+    val context = appContext.reactContext
+      ?: error("Android context is unavailable")
+
+    return context.getSystemService(
+      Context.NOTIFICATION_SERVICE
+    ) as NotificationManager
+  }
+
+  private fun getKitNotifications(
+    manager: NotificationManager
+  ): List<StatusBarNotification> {
+    check(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+      "Notification management requires Android 6.0 or newer"
+    }
+
+    return manager.activeNotifications.filter { notification ->
+      notification.tag?.startsWith("$TAG_PREFIX:") == true
     }
   }
 
@@ -167,6 +189,65 @@ class PushGroupsKitModule : Module() {
         0,
         summaryBuilder.build()
       )
+    }
+
+    AsyncFunction("dismissNotificationAsync") {
+      notificationId: String,
+      groupId: String ->
+
+      require(notificationId.isNotBlank()) {
+        "notificationId must not be empty"
+      }
+
+      require(groupId.isNotBlank()) {
+        "groupId must not be empty"
+      }
+
+      val manager = getNotificationManager()
+
+      val groupKey = "$TAG_PREFIX:group:$groupId"
+      val itemTag = "$TAG_PREFIX:item:$groupId:$notificationId"
+      val summaryTag = "$TAG_PREFIX:summary:$groupId"
+
+      val hasOtherItems = getKitNotifications(manager).any {
+        it.notification.group == groupKey &&
+          it.tag?.startsWith("$TAG_PREFIX:item:") == true &&
+          it.tag != itemTag
+      }
+
+      manager.cancel(itemTag, 0)
+
+      if (!hasOtherItems) {
+        manager.cancel(summaryTag, 0)
+      }
+    }
+
+    AsyncFunction("dismissGroupAsync") { groupId: String ->
+      require(groupId.isNotBlank()) {
+        "groupId must not be empty"
+      }
+
+      val manager = getNotificationManager()
+      val groupKey = "$TAG_PREFIX:group:$groupId"
+
+      getKitNotifications(manager)
+        .filter {
+          it.notification.group == groupKey &&
+            it.tag?.startsWith("$TAG_PREFIX:item:") == true
+        }
+        .forEach {
+          manager.cancel(it.tag, it.id)
+        }
+
+      manager.cancel("$TAG_PREFIX:summary:$groupId", 0)
+    }
+
+    AsyncFunction("dismissAllAsync") {
+      val manager = getNotificationManager()
+
+      getKitNotifications(manager).forEach {
+        manager.cancel(it.tag, it.id)
+      }
     }
   }
 }

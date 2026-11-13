@@ -15,9 +15,18 @@ declare class PushGroupsKitModule extends NativeModule<{}> {
     channelId: string;
     notificationsEnabled: boolean;
     importance: number | null;
-    vibrratonEnabled: boolean | null;
+    vibrationEnabled: boolean | null;
     sound: string | null;
   }>;
+
+  dismissNotificationAsync(
+    notificationId: string,
+    groupId: string
+  ): Promise<void>;
+
+  dismissGroupAsync(groupId: string): Promise<void>;
+
+  dismissAllAsync(): Promise<void>;
 
   showUngroupedDiagnosticAsync(): Promise<void>;
 }
