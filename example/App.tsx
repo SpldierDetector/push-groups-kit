@@ -6,7 +6,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  View,
+  ScrollView,
 } from 'react-native';
 
 import PushGroupsKit from 'push-groups-kit';
@@ -29,6 +29,7 @@ async function requestNotificationPermission(): Promise<boolean> {
 
 export default function App() {
   const nextMessageId = useRef(0);
+  const lastMessageIds = useRef<Record<string, string>>({});
   const [status, setStatus] = useState('Ready to test');
 
   async function sendTestNotification(
@@ -46,13 +47,16 @@ export default function App() {
       nextMessageId.current += 1;
 
       const id = nextMessageId.current;
+      const notificationId = `test-${Date.now()}-${id}`;
 
       await PushGroupsKit.showGroupedNotificationAsync(
-        `test-${Date.now()}-${id}`,
+        notificationId,
         groupId,
         title,
         `Test message #${id}`
       );
+
+      lastMessageIds.current[groupId] = notificationId;
 
       setStatus(`Sent notification #${id} to ${groupId}`);
     } catch (error) {
@@ -80,8 +84,60 @@ export default function App() {
     }
   }
 
+  async function dismissLastNotification(groupId: string) {
+    const notificationId = lastMessageIds.current[groupId];
+
+    if (!notificationId) {
+      setStatus(`No tracked notification for ${groupId}`);
+      return;
+    }
+
+    try {
+      await PushGroupsKit.dismissNotificationAsync(
+        notificationId,
+        groupId
+      );
+
+      delete lastMessageIds.current[groupId];
+
+      setStatus(`Dismissed last notification from ${groupId}`);
+    } catch (error) {
+      setStatus(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
+
+  async function dismissGroup(groupId: string) {
+    try {
+      await PushGroupsKit.dismissGroupAsync(groupId);
+
+      delete lastMessageIds.current[groupId];
+
+      setStatus(`Dismissed group ${groupId}`);
+    } catch (error) {
+      setStatus(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
+
+  async function dismissAll() {
+    try {
+      await PushGroupsKit.dismissAllAsync();
+
+      lastMessageIds.current = {};
+
+      setStatus('Dismissed all Push Groups Kit notifications');
+    } catch (error) {
+      setStatus(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
+
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Push Groups Kit</Text>
 
       <Text style={styles.subtitle}>
@@ -108,6 +164,33 @@ export default function App() {
 
       <Pressable
         style={styles.button}
+        onPress={() => dismissLastNotification('chat-1')}
+      >
+        <Text style={styles.buttonText}>
+          Dismiss Last from Chat 1
+        </Text>
+      </Pressable>
+
+      <Pressable
+        style={styles.button}
+        onPress={() => dismissGroup('chat-1')}
+      >
+        <Text style={styles.buttonText}>
+          Dismiss Chat 1
+        </Text>
+      </Pressable>
+
+      <Pressable
+        style={styles.button}
+        onPress={dismissAll}
+      >
+        <Text style={styles.buttonText}>
+          Dismiss All
+        </Text>
+      </Pressable>
+
+      <Pressable
+        style={styles.button}
         onPress={runDiagnostics}
       >
         <Text style={styles.buttonText}>
@@ -125,13 +208,13 @@ export default function App() {
       </Pressable>
 
       <Text style={styles.status}>{status}</Text>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
     backgroundColor: '#101827',
