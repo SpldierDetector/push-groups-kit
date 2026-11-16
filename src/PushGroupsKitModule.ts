@@ -3,7 +3,16 @@ import {
   requireNativeModule
 } from 'expo';
 
-declare class PushGroupsKitModule extends NativeModule<{}> {
+export type NotificationPress = {
+  groupId: string;
+  notificationId: string | null;
+};
+
+type PushGroupsKitModuleEvents = {
+  onNotificationPressed: (event: NotificationPress) => void;
+};
+
+declare class PushGroupsKitModule extends NativeModule<PushGroupsKitModuleEvents> {
   showGroupedNotificationAsync(
     notificationId: string,
     groupId: string,
@@ -29,6 +38,8 @@ declare class PushGroupsKitModule extends NativeModule<{}> {
   dismissAllAsync(): Promise<void>;
 
   showUngroupedDiagnosticAsync(): Promise<void>;
+
+  getInitialNotificationPressAsync(): Promise<NotificationPress | null>;
 }
 
 export default requireNativeModule<PushGroupsKitModule>('PushGroupsKit');

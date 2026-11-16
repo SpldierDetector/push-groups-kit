@@ -2,3 +2,4 @@
 // and on native platforms to PushGroupsKitModule.ts
 export { default } from './PushGroupsKitModule';
 export * from './PushGroupsKit.types';
+export type { NotificationPress } from './PushGroupsKitModule';

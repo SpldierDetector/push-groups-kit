@@ -1,5 +1,5 @@
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   PermissionsAndroid,
   Platform,
@@ -31,6 +31,44 @@ export default function App() {
   const nextMessageId = useRef(0);
   const lastMessageIds = useRef<Record<string, string>>({});
   const [status, setStatus] = useState('Ready to test');
+  const [lastPress, setLastPress] = useState('No notification press received yet');
+
+  useEffect(() => {
+    let active = true;
+    let receivedLiveEvent = false;
+
+    const subscription = PushGroupsKit.addListener(
+      'onNotificationPressed',
+      (event) => {
+        receivedLiveEvent = true;
+
+        if (active) {
+          setLastPress(
+            `Event: ${JSON.stringify(event, null, 2)}`
+          );
+        }
+      }
+    );
+
+    PushGroupsKit.getInitialNotificationPressAsync()
+      .then((event) => {
+        if (active && !receivedLiveEvent && event) {
+          setLastPress(
+            `Initial: ${JSON.stringify(event, null, 2)}`
+          );
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setLastPress(`Press error: ${String(error)}`);
+        }
+      });
+
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, []);
 
   async function sendTestNotification(
     groupId: string,
@@ -144,6 +182,10 @@ export default function App() {
         Android notification grouping test
       </Text>
 
+      <Text selectable style={styles.pressInfo}>
+        {lastPress}
+      </Text>
+
       <Pressable
         style={styles.button}
         onPress={() => sendTestNotification('chat-1', 'Alex')}
@@ -245,5 +287,10 @@ const styles = StyleSheet.create({
     color: '#AEBCCE',
     marginTop: 20,
     textAlign: 'center',
+  },
+  pressInfo: {
+    color: '#93e4c5',
+    fontSize: 13,
+    marginBottom: 16,
   },
 });

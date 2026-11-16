@@ -8,6 +8,9 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Intent
+import android.net.Uri
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -20,6 +23,9 @@ class PushGroupsKitModule : Module() {
   companion object {
     private const val CHANNEL_ID = "push_groups_kit_alerts_v3"
     private const val TAG_PREFIX = "push-groups-kit"
+    private const val PRESS_ACTION = "com.pushgroupskit.NOTIFICATION_PRESSED"
+    private const val EXTRA_GROUP_ID = "com.pushgroupskit.extra.GROUP_ID"
+    private const val EXTRA_NOTIFICATION_ID = "com.pushgroupskit.extra.NOTIFICATION_ID"
   }
 
   @Suppress("DEPRECATION")
@@ -66,8 +72,80 @@ class PushGroupsKitModule : Module() {
     }
   }
 
+  private fun createPressPendingIntent(
+    context: Context,
+    groupId: String,
+    notificationId: String?
+  ): PendingIntent {
+    val intent = context.packageManager
+      .getLaunchIntentForPackage(context.packageName)
+      ?: error("Application launch activity was not found")
+
+    intent.action = PRESS_ACTION
+
+    intent.data = Uri.Builder()
+      .scheme("pushgroupskit")
+      .authority("notification")
+      .appendPath(if (notificationId == null) "group" else "item")
+      .appendPath(groupId)
+      .apply {
+        if (notificationId != null) {
+          appendPath(notificationId)
+        }
+      }
+      .build()
+
+    intent.putExtra(EXTRA_GROUP_ID, groupId)
+
+    if (notificationId != null) {
+      intent.putExtra(EXTRA_NOTIFICATION_ID, notificationId)
+    }
+
+    intent.addFlags(
+      Intent.FLAG_ACTIVITY_CLEAR_TOP or
+        Intent.FLAG_ACTIVITY_SINGLE_TOP
+    )
+
+    return PendingIntent.getActivity(
+      context,
+      0,
+      intent,
+      PendingIntent.FLAG_UPDATE_CURRENT or
+        PendingIntent.FLAG_IMMUTABLE
+    )
+  }
+
+  private fun readNotificationPress(
+    intent: Intent?
+  ): Map<String, Any?>? {
+    if (intent?.action != PRESS_ACTION) {
+      return null
+    }
+
+    val groupId = intent.getStringExtra(EXTRA_GROUP_ID)
+      ?.takeIf { it.isNotBlank() }
+      ?: return null
+
+    return mapOf(
+      "groupId" to groupId,
+      "notificationId" to intent.getStringExtra(EXTRA_NOTIFICATION_ID)
+    )
+  }
+
   override fun definition() = ModuleDefinition {
     Name("PushGroupsKit")
+
+    Events("onNotificationPressed")
+
+    OnNewIntent { intent ->
+      readNotificationPress(intent)?.let { press ->
+        sendEvent("onNotificationPressed", press)
+      }
+    }
+
+    AsyncFunction("getInitialNotificationPressAsync") {
+      readNotificationPress(appContext.currentActivity?.intent)
+    }
 
     AsyncFunction("getNotificationDiagnosticsAsync") {
       val context = appContext.reactContext
@@ -158,6 +236,7 @@ class PushGroupsKitModule : Module() {
 
       val notification = createBuilder(context)
         .setSmallIcon(android.R.drawable.ic_dialog_info)
+        .setContentIntent(createPressPendingIntent(context, groupId, notificationId))
         .setContentTitle(title)
         .setContentText(body)
         .setGroup(groupKey)
@@ -172,6 +251,7 @@ class PushGroupsKitModule : Module() {
 
       val summaryBuilder = createBuilder(context)
         .setSmallIcon(android.R.drawable.ic_dialog_info)
+        .setContentIntent(createPressPendingIntent(context, groupId, null))
         .setContentTitle(title)
         .setContentText("Grouped notifications")
         .setGroup(groupKey)
