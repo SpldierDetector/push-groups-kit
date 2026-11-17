@@ -17,6 +17,16 @@ import android.os.Build
 import android.service.notification.StatusBarNotification
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.kotlin.records.Field
+import expo.modules.kotlin.records.Record
+
+class PushGroupsKitConfigRecord : Record {
+  @Field
+  val channelName: String? = null
+
+  @Field
+  val summaryText: String? = null
+}
 
 class PushGroupsKitModule : Module() {
 
@@ -26,6 +36,12 @@ class PushGroupsKitModule : Module() {
     private const val PRESS_ACTION = "com.pushgroupskit.NOTIFICATION_PRESSED"
     private const val EXTRA_GROUP_ID = "com.pushgroupskit.extra.GROUP_ID"
     private const val EXTRA_NOTIFICATION_ID = "com.pushgroupskit.extra.NOTIFICATION_ID"
+
+    private const val DEFAULT_CHANNEL_NAME = "Grouped notifications"
+    private const val DEFAULT_SUMMARY_TEXT = "Grouped notifications"
+    private const val PREFS_NAME = "push_groups_kit_settings"
+    private const val KEY_CHANNEL_NAME = "channelName"
+    private const val KEY_SUMMARY_TEXT = "summaryText"
   }
 
   @Suppress("DEPRECATION")
@@ -36,18 +52,29 @@ class PushGroupsKitModule : Module() {
       Notification.Builder(context)
     }
 
-  private fun createChannel(manager: NotificationManager) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      val channel = NotificationChannel(
-        CHANNEL_ID,
-        "Grouped notifications",
-        NotificationManager.IMPORTANCE_DEFAULT
-      ).apply {
-        enableVibration(true)
-        setVibrationPattern(longArrayOf(0L, 200L, 120L, 200L))
-      }
+    private fun getSettings(context: Context) =
+      context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-      manager.createNotificationChannel(channel)
+    private fun createChannel(
+      context: Context,
+      manager: NotificationManager
+    ) {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val channelName = getSettings(context).getString(
+          KEY_CHANNEL_NAME,
+          DEFAULT_CHANNEL_NAME
+        ) ?: DEFAULT_CHANNEL_NAME
+
+        val channel = NotificationChannel(
+          CHANNEL_ID,
+          channelName,
+          NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+          enableVibration(true)
+          setVibrationPattern(longArrayOf(0L, 200L, 120L, 200L))
+        }
+
+        manager.createNotificationChannel(channel)
     }
   }
 
@@ -135,6 +162,35 @@ class PushGroupsKitModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("PushGroupsKit")
 
+    AsyncFunction("configureAsync") { config: PushGroupsKitConfigRecord ->
+      val context = appContext.reactContext
+        ?: error("Android context is unavailable")
+
+      val channelName = config.channelName?.trim()
+      val summaryText = config.summaryText?.trim()
+
+      require(channelName == null || channelName.isNotEmpty()) {
+        "channelName must not be empty"
+      }
+
+      require(summaryText == null || summaryText.isNotEmpty()) {
+        "summaryText must not be empty"
+      }
+
+      val editor = getSettings(context).edit()
+
+      channelName?.let {
+        editor.putString(KEY_CHANNEL_NAME, it)
+      }
+
+      summaryText?.let {
+        editor.putString(KEY_SUMMARY_TEXT, it)
+      }
+
+      editor.apply()
+      createChannel(context, getNotificationManager())
+    }
+
     Events("onNotificationPressed")
 
     OnNewIntent { intent ->
@@ -144,7 +200,22 @@ class PushGroupsKitModule : Module() {
     }
 
     AsyncFunction("getInitialNotificationPressAsync") {
-      readNotificationPress(appContext.currentActivity?.intent)
+      val activity = appContext.currentActivity
+      val intent = activity?.intent
+      val press = readNotificationPress(intent)
+
+      if (press != null && intent != null) {
+        val clearedIntent = Intent(intent).apply {
+          action = Intent.ACTION_MAIN
+          data = null
+          removeExtra(EXTRA_GROUP_ID)
+          removeExtra(EXTRA_NOTIFICATION_ID)
+        }
+
+        activity.setIntent(clearedIntent)
+      }
+
+      press
     }
 
     AsyncFunction("getNotificationDiagnosticsAsync") {
@@ -180,7 +251,7 @@ class PushGroupsKitModule : Module() {
         Context.NOTIFICATION_SERVICE
       ) as NotificationManager
 
-      createChannel(manager)
+      createChannel(context, manager)
 
       val notification = createBuilder(context)
         .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -230,7 +301,7 @@ class PushGroupsKitModule : Module() {
         Context.NOTIFICATION_SERVICE
       ) as NotificationManager
 
-      createChannel(manager)
+      createChannel(context, manager)
 
       val groupKey = "$TAG_PREFIX:group:$groupId"
 
@@ -253,7 +324,12 @@ class PushGroupsKitModule : Module() {
         .setSmallIcon(android.R.drawable.ic_dialog_info)
         .setContentIntent(createPressPendingIntent(context, groupId, null))
         .setContentTitle(title)
-        .setContentText("Grouped notifications")
+        .setContentText(
+          getSettings(context).getString(
+            KEY_SUMMARY_TEXT,
+            DEFAULT_SUMMARY_TEXT
+          ) ?: DEFAULT_SUMMARY_TEXT
+        )
         .setGroup(groupKey)
         .setGroupSummary(true)
         .setOnlyAlertOnce(true)

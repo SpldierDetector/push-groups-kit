@@ -113,6 +113,19 @@ export default function App() {
     }
   }
 
+  async function checkInitialPressAgain() {
+    try {
+      const result =
+        await PushGroupsKit.getInitialNotificationPressAsync();
+
+      setStatus(`Repeated initial press: ${JSON.stringify(result)}`);
+    } catch (error) {
+      setStatus (
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
+
   async function testUngroupedNotification() {
     try {
       await PushGroupsKit.showUngroupedDiagnosticAsync();
@@ -167,6 +180,21 @@ export default function App() {
       lastMessageIds.current = {};
 
       setStatus('Dismissed all Push Groups Kit notifications');
+    } catch (error) {
+      setStatus(
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
+
+  async function configureTestNotifications() {
+    try {
+      await PushGroupsKit.configureAsync({
+        channelName: 'Test Notifications',
+        summaryText: 'My grouped notifications',
+      });
+
+      setStatus('Notification configurtion saved');
     } catch (error) {
       setStatus(
         error instanceof Error ? error.message : String(error)
@@ -237,6 +265,24 @@ export default function App() {
       >
         <Text style={styles.buttonText}>
           Check Notification Channel
+        </Text>
+      </Pressable>
+
+      <Pressable
+        style={styles.button}
+        onPress={configureTestNotifications}
+      >
+        <Text style={styles.buttonText}>
+          Configure Notifications
+        </Text>
+      </Pressable>
+
+      <Pressable
+        style={styles.button}
+        onPress={checkInitialPressAgain}
+      >
+        <Text style={styles.buttonText}>
+          Check Initial Press Again
         </Text>
       </Pressable>
 

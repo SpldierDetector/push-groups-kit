@@ -8,6 +8,11 @@ export type NotificationPress = {
   notificationId: string | null;
 };
 
+export type PushGroupsKitConfig = {
+  channelName?: string;
+  summaryText?: string;
+};
+
 type PushGroupsKitModuleEvents = {
   onNotificationPressed: (event: NotificationPress) => void;
 };
@@ -33,12 +38,10 @@ declare class PushGroupsKitModule extends NativeModule<PushGroupsKitModuleEvents
     groupId: string
   ): Promise<void>;
 
+  configureAsync(config: PushGroupsKitConfig): Promise<void>;
   dismissGroupAsync(groupId: string): Promise<void>;
-
   dismissAllAsync(): Promise<void>;
-
   showUngroupedDiagnosticAsync(): Promise<void>;
-
   getInitialNotificationPressAsync(): Promise<NotificationPress | null>;
 }
 

@@ -3,3 +3,4 @@
 export { default } from './PushGroupsKitModule';
 export * from './PushGroupsKit.types';
 export type { NotificationPress } from './PushGroupsKitModule';
+export type { PushGroupsKitConfig } from './PushGroupsKitModule';
