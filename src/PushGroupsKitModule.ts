@@ -11,6 +11,7 @@ export type NotificationPress = {
 export type PushGroupsKitConfig = {
   channelName?: string;
   summaryText?: string;
+  smallIconName?: string;
 };
 
 type PushGroupsKitModuleEvents = {

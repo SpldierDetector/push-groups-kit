@@ -192,6 +192,7 @@ export default function App() {
       await PushGroupsKit.configureAsync({
         channelName: 'Test Notifications',
         summaryText: 'My grouped notifications',
+        smallIconName: 'ic_test_notification',
       });
 
       setStatus('Notification configurtion saved');

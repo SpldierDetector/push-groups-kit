@@ -26,6 +26,9 @@
       "eas": {
         "projectId": "475ebf55-9345-40ac-9fec-e9b8947d4d14"
       }
-    }
+    },
+    "plugins": [
+      "./plugins/withTestNotificationIcon"
+    ]
   }
 }

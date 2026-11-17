@@ -26,6 +26,9 @@ class PushGroupsKitConfigRecord : Record {
 
   @Field
   val summaryText: String? = null
+
+  @Field
+  val smallIconName: String? = null
 }
 
 class PushGroupsKitModule : Module() {
@@ -42,6 +45,7 @@ class PushGroupsKitModule : Module() {
     private const val PREFS_NAME = "push_groups_kit_settings"
     private const val KEY_CHANNEL_NAME = "channelName"
     private const val KEY_SUMMARY_TEXT = "summaryText"
+    private const val KEY_SMALL_ICON_NAME = "smallIconName"
   }
 
   @Suppress("DEPRECATION")
@@ -52,29 +56,48 @@ class PushGroupsKitModule : Module() {
       Notification.Builder(context)
     }
 
-    private fun getSettings(context: Context) =
-      context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+  private fun getSettings(context: Context) =
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    private fun createChannel(
-      context: Context,
-      manager: NotificationManager
-    ) {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        val channelName = getSettings(context).getString(
-          KEY_CHANNEL_NAME,
-          DEFAULT_CHANNEL_NAME
-        ) ?: DEFAULT_CHANNEL_NAME
+  private fun resolveSmallIcon(context: Context): Int {
+    val iconName = getSettings(context).getString(
+      KEY_SMALL_ICON_NAME,
+      null
+    ) ?: return android.R.drawable.ic_dialog_info
 
-        val channel = NotificationChannel(
-          CHANNEL_ID,
-          channelName,
-          NotificationManager.IMPORTANCE_DEFAULT
-        ).apply {
-          enableVibration(true)
-          setVibrationPattern(longArrayOf(0L, 200L, 120L, 200L))
-        }
+    val resourceId = context.resources.getIdentifier(
+      iconName,
+      "drawable",
+      context.packageName
+    )
 
-        manager.createNotificationChannel(channel)
+    return if (resourceId != 0) {
+      resourceId
+    } else {
+      android.R.drawable.ic_dialog_info
+    }
+  }
+
+  private fun createChannel(
+    context: Context,
+    manager: NotificationManager
+  ) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      val channelName = getSettings(context).getString(
+        KEY_CHANNEL_NAME,
+        DEFAULT_CHANNEL_NAME
+      ) ?: DEFAULT_CHANNEL_NAME
+
+      val channel = NotificationChannel(
+        CHANNEL_ID,
+        channelName,
+        NotificationManager.IMPORTANCE_DEFAULT
+      ).apply {
+        enableVibration(true)
+        setVibrationPattern(longArrayOf(0L, 200L, 120L, 200L))
+      }
+
+      manager.createNotificationChannel(channel)
     }
   }
 
@@ -168,6 +191,7 @@ class PushGroupsKitModule : Module() {
 
       val channelName = config.channelName?.trim()
       val summaryText = config.summaryText?.trim()
+      val smallIconName = config.smallIconName?.trim()
 
       require(channelName == null || channelName.isNotEmpty()) {
         "channelName must not be empty"
@@ -175,6 +199,22 @@ class PushGroupsKitModule : Module() {
 
       require(summaryText == null || summaryText.isNotEmpty()) {
         "summaryText must not be empty"
+      }
+
+      if (smallIconName != null) {
+        require(smallIconName.matches(Regex("[a-z][a-z0-9_]*"))) {
+          "Invalid smallIconName"
+        }
+
+        require(
+          context.resources.getIdentifier(
+            smallIconName,
+            "drawable",
+            context.packageName
+          ) != 0
+        ) {
+          "Drawable resource not found: $smallIconName"
+        }
       }
 
       val editor = getSettings(context).edit()
@@ -185,6 +225,10 @@ class PushGroupsKitModule : Module() {
 
       summaryText?.let {
         editor.putString(KEY_SUMMARY_TEXT, it)
+      }
+
+      smallIconName?.let {
+        editor.putString(KEY_SMALL_ICON_NAME, it)
       }
 
       editor.apply()
@@ -254,7 +298,7 @@ class PushGroupsKitModule : Module() {
       createChannel(context, manager)
 
       val notification = createBuilder(context)
-        .setSmallIcon(android.R.drawable.ic_dialog_info)
+        .setSmallIcon(resolveSmallIcon(context))
         .setContentTitle("Diagnostic notification")
         .setContentText("Testing vibration without grouping")
         .setAutoCancel(true)
@@ -306,7 +350,7 @@ class PushGroupsKitModule : Module() {
       val groupKey = "$TAG_PREFIX:group:$groupId"
 
       val notification = createBuilder(context)
-        .setSmallIcon(android.R.drawable.ic_dialog_info)
+        .setSmallIcon(resolveSmallIcon(context))
         .setContentIntent(createPressPendingIntent(context, groupId, notificationId))
         .setContentTitle(title)
         .setContentText(body)
@@ -321,7 +365,7 @@ class PushGroupsKitModule : Module() {
       )
 
       val summaryBuilder = createBuilder(context)
-        .setSmallIcon(android.R.drawable.ic_dialog_info)
+        .setSmallIcon(resolveSmallIcon(context))
         .setContentIntent(createPressPendingIntent(context, groupId, null))
         .setContentTitle(title)
         .setContentText(
