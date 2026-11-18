@@ -3,7 +3,7 @@
 
 Android notification grouping for Expo and React Native applications.
 
-![Version](https://img.shields.io/badge/version-0.2.0-blue)
+![Version](https://img.shields.io/badge/version-0.3.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Android-green)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
@@ -18,6 +18,10 @@ It allows developers to organize notifications using custom group identifiers wi
 The library is not limited to messaging applications. Groups can represent conversations, orders, projects, accounts, or other application-specific entities.
 
 ## Features
+
+- Public native Kotlin API.
+- Shared Kotlin and TypeScript notification management.
+- Native notification creation without invoking JavaScript.
 
 - Native Android notification grouping.
 - Custom notification and group identifiers.
@@ -70,7 +74,7 @@ https://github.com/SpldierDetector/push-groups-kit/releases
 Install the downloaded archive in your project:
 
 ```bash
-npm install ./push-groups-kit-0.2.0.tgz
+npm install ./push-groups-kit-0.3.0.tgz
 ```
 
 Rebuild your native Android application after installation.
@@ -244,6 +248,92 @@ Initial press information is consumed when retrieved.
 
 Applications should handle both initial notification presses and live notification press events.
 
+## Native Kotlin API
+
+Starting with version 0.3.0, Push Groups Kit exposes
+a public native Android API through PushGroupsKitAndroid.
+
+### Gradle dependency
+
+```groovy
+dependencies {
+  implementation project(':push-groups-kit')
+}
+```
+
+### Display a notification
+
+```kotlin
+import com.pushgroupskit.PushGroupsKitAndroid
+
+PushGroupsKitAndroid.showGroupedNotification(
+  context = context,
+  notificationId = "message-001",
+  groupId = "conversation-001",
+  title = "Alex",
+  body = "Hello from Kotlin!"
+)
+```
+
+Kotlin and TypeScript notifications share group identifiers,
+notification settings, and dismissal behavior.
+
+An Android Context and notification permission are required
+when applicable.
+
+### Configuration
+
+```kotlin
+PushGroupsKitAndroid.configure(
+  context = context,
+  channelName = "Messages",
+  summaryText = "New messages",
+  smallIconName = "ic_notification"
+)
+```
+
+### Notification management
+
+```kotlin
+PushGroupsKitAndroid.dismissNotification(
+  context,
+  "message-001",
+  "conversation-001"
+)
+
+PushGroupsKitAndroid.dismissGroup(
+  context,
+  "conversation-001"
+)
+
+PushGroupsKitAndroid.dismissAll(context)
+```
+
+### Kotlin API Reference
+
+| Method | Return type |
+| --- | --- |
+| configure(context, channelName, summaryText, smallIconName) | Unit |
+| showGroupedNotification(context, notificationId, groupId, title, body) | Unit |
+| dismissNotification(context, notificationId, groupId) | Unit |
+| dismissGroup(context, groupId) | Unit |
+| dismissAll(context) | Unit |
+| getNotificationDiagnostics(context) | Map<String, Any?> |
+| showUngroupedDiagnostic(context) | Unit |
+
+### Notification press handling
+
+Native notifications support the existing TypeScript
+notification press API.
+
+### Background integrations
+
+The Kotlin API is designed for native Android integrations,
+including Firebase Cloud Messaging services.
+
+Remote delivery and background execution are the
+responsibility of the integrating application.
+
 ## API Reference
 
 | Method | Return type |
@@ -291,6 +381,9 @@ await PushGroupsKit.showUngroupedDiagnosticAsync();
 The diagnostic notification is scheduled with a five-second delay.
 
 ## Limitations
+
+- Firebase Cloud Messaging integration has not yet been tested.
+- Notification delivery with a terminated application process requires additional testing.
 
 - Android only.
 - Expo Go is not supported.

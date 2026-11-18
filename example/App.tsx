@@ -1,5 +1,6 @@
 
 import { useEffect, useRef, useState } from 'react';
+import { requireNativeModule } from 'expo';
 import {
   PermissionsAndroid,
   Platform,
@@ -195,11 +196,44 @@ export default function App() {
         smallIconName: 'ic_test_notification',
       });
 
-      setStatus('Notification configurtion saved');
+      setStatus('Notification configuration saved');
     } catch (error) {
       setStatus(
         error instanceof Error ? error.message : String(error)
       );
+    }
+  }
+
+  async function sendNativeTestNotification() {
+    try {
+      const hasPermission = await requestNotificationPermission();
+
+      if (!hasPermission) {
+        setStatus('Notification permission denied');
+        return;
+      }
+
+      const nativeTest = requireNativeModule<{
+        scheduleAsync(
+          notificationId: string,
+          groupId: string
+        ): Promise<void>;
+      }>('NativeNotificationTest');
+
+      const notificationId = `native-${Date.now()}`;
+
+      await nativeTest.scheduleAsync(
+        notificationId,
+        'chat-1'
+      );
+
+      lastMessageIds.current['chat-1'] = notificationId;
+
+      setStatus(
+        'Native notification scheduled. Press Home now.'
+      );
+    } catch (error) {
+      setStatus(String(error));
     }
   }
 
@@ -230,6 +264,15 @@ export default function App() {
       >
         <Text style={styles.buttonText}>
           Send to Chat 2
+        </Text>
+      </Pressable>
+
+      <Pressable
+        style={styles.button}
+        onPress={sendNativeTestNotification}
+      >
+        <Text style={styles.buttonText}>
+          Send from Kotlin
         </Text>
       </Pressable>
 
