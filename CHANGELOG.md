@@ -3,6 +3,39 @@
 
 All notable changes to Push Groups Kit will be documented in this file.
 
+## [0.3.0] - 2026-11-18
+
+### Added
+
+- Public native Kotlin API through PushGroupsKitAndroid.
+- Native notification creation without invoking JavaScript.
+- Native notification configuration and management.
+- Shared Kotlin and TypeScript notification grouping.
+- Native Kotlin notification diagnostics.
+- Example native Kotlin testing module.
+
+### Changed
+
+- Extracted Android notification management into a reusable Kotlin implementation.
+- Updated the Expo module to delegate operations to PushGroupsKitAndroid.
+- Preserved the existing public TypeScript API.
+
+### Documentation
+
+- Added native Kotlin API documentation.
+- Added Gradle dependency and Kotlin usage examples.
+- Documented background integration limitations.
+
+### Testing
+
+- Passed all 10 manual functional tests.
+- Verified mixed Kotlin and TypeScript notification grouping.
+- Verified notification icons, sound, and vibration.
+- Verified cross-API notification dismissal.
+- Verified native notification press handling.
+- Verified repeated initial press retrieval returns null.
+- Tested on HONOR X7c running Android 14.
+
 ## [0.2.0] - 2026-11-17
 
 ### Added
